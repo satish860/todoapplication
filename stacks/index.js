@@ -1,4 +1,4 @@
-import MyStack from "./MyStack";
+import ApiStack from "./ApiStack";
 import StorageStack from "./StorageStack";
 
 export default function main(app) {
@@ -7,9 +7,13 @@ export default function main(app) {
     runtime: "dotnetcore3.1"
   });
 
-  new MyStack(app, "my-stack");
+  const storageStack = new StorageStack(app,"todostorage");
 
-  new StorageStack(app,"todostorage");
+  new ApiStack(app, "my-stack",{
+    table: storageStack.table,
+  });
+
+  
 
   // Add more stacks
 }

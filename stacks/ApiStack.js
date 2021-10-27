@@ -22,7 +22,7 @@ export default class ApiStack extends sst.Stack {
         "POST /todo": "Api::Api.Handlers::CreateTodo",
         "GET /todo/{id}":  "Api::Api.Handlers::GetTodo",
         "PUT /todo":  "Api::Api.Handlers::UpdateTodo",
-        "Delete /todo": "Api::Api.Handlers::DeleteTodo"
+        "Delete /todo/{id}": "Api::Api.Handlers::DeleteTodo"
       }
     });
     

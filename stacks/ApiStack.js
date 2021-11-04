@@ -15,8 +15,9 @@ export default class ApiStack extends sst.Stack {
         srcPath: "src/Api",
         environment: {
           TABLE_NAME : table.tableName,
-        }
+        },
       },
+      defaultAuthorizationType: "AWS_IAM",
       routes: {
         "GET /todo": "Api::Api.Handlers::ListTodo",
         "POST /todo": "Api::Api.Handlers::CreateTodo",

@@ -28,32 +28,45 @@ namespace Api
 
         public async Task<APIGatewayHttpApiV2ProxyResponse> ListTodo(APIGatewayHttpApiV2ProxyRequest request)
         {
-            var tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
-            AsyncSearch<Todo> search = dynamoDBContext.QueryAsync<Todo>("123", new DynamoDBOperationConfig
+            try
             {
-                OverrideTableName = tableName
-            });
-            List<Todo> todo_list = new List<Todo>();
-            do
+                var userId = "123";
+                var tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
+                AsyncSearch<Todo> search = dynamoDBContext.QueryAsync<Todo>(userId, new DynamoDBOperationConfig
+                {
+                    OverrideTableName = tableName
+                });
+                List<Todo> todo_list = new List<Todo>();
+                do
+                {
+                    var searchedTodo = await search.GetNextSetAsync();
+                    todo_list.AddRange(searchedTodo);
+                } while (!search.IsDone);
+                return new APIGatewayHttpApiV2ProxyResponse
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Body = JsonSerializer.Serialize(todo_list),
+                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                };
+            }
+            catch (Exception ex)
             {
-                var searchedTodo = await search.GetNextSetAsync();
-                todo_list.AddRange(searchedTodo);
-            } while (!search.IsDone);
-
-            return new APIGatewayHttpApiV2ProxyResponse
-            {
-                StatusCode = (int)HttpStatusCode.OK,
-                Body = JsonSerializer.Serialize<List<Todo>>(todo_list),
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-            };
+                return new APIGatewayHttpApiV2ProxyResponse
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Body = ex.InnerException.Message,
+                    Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
+                };
+            }
         }
 
         public async Task<APIGatewayHttpApiV2ProxyResponse> CreateTodo(APIGatewayHttpApiV2ProxyRequest request)
         {
             try
             {
+                var userId = request.RequestContext.Authorizer.IAM.UserId;
                 Todo todo = JsonSerializer.Deserialize<Todo>(request.Body);
-                todo.UserId = "123";
+                todo.UserId = userId;
                 todo.TodoId = Guid.NewGuid().ToString();
                 var tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
 
@@ -65,7 +78,7 @@ namespace Api
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Body = todo.TodoId,
-                    Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
+                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
                 };
             }
             catch (Exception ex)
@@ -82,10 +95,11 @@ namespace Api
 
         public async Task<APIGatewayHttpApiV2ProxyResponse> GetTodo(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
         {
+            var userId = request.RequestContext.Authorizer.IAM.UserId;
             var todoId = request.PathParameters["id"];
             var tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
             context.Logger.LogLine($"Table Name used : {tableName}");
-            var todo = await dynamoDBContext.LoadAsync<Todo>("123", todoId, new DynamoDBOperationConfig
+            var todo = await dynamoDBContext.LoadAsync<Todo>(userId, todoId, new DynamoDBOperationConfig
             {
                 OverrideTableName = tableName
             });
@@ -100,8 +114,9 @@ namespace Api
 
         public async Task<APIGatewayHttpApiV2ProxyResponse> UpdateTodo(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
         {
+            var userId = request.RequestContext.Authorizer.IAM.UserId;
             Todo todo = JsonSerializer.Deserialize<Todo>(request.Body);
-            todo.UserId = "123";
+            todo.UserId = userId;
             if (string.IsNullOrEmpty(todo.TodoId))
             {
                 return new APIGatewayHttpApiV2ProxyResponse
@@ -126,9 +141,10 @@ namespace Api
 
         public async Task<APIGatewayHttpApiV2ProxyResponse> DeleteTodo(APIGatewayHttpApiV2ProxyRequest request)
         {
+            var userId = request.RequestContext.Authorizer.IAM.UserId;
             var todoId = request.PathParameters["id"];
             var tableName = Environment.GetEnvironmentVariable("TABLE_NAME");
-            await dynamoDBContext.DeleteAsync<Todo>("123", todoId, new DynamoDBOperationConfig
+            await dynamoDBContext.DeleteAsync<Todo>(userId, todoId, new DynamoDBOperationConfig
             {
                 OverrideTableName = tableName
             });
